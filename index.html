@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Nova Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet"/>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body,#root{height:100%;overflow:hidden;}
+body{font-family:'DM Sans',sans-serif;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.13);border-radius:3px;}
+input,select,textarea,button{font-family:'DM Sans',sans-serif;}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useContext,useRef,useEffect,useMemo} = React;
+
+// ═══════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════
+const PRACTITIONERS = [
+  {id:1,name:"Maya Chen",    initials:"MC",role:"Senior Therapist",      color:"#3B82F6"},
+  {id:2,name:"James Wright", initials:"JW",role:"Deep Tissue Specialist",color:"#10B981"},
+  {id:3,name:"Sofia Park",   initials:"SP",role:"Wellness Therapist",    color:"#F43F5E"},
+];
+const INIT_ROOMS = [
+  {id:1,name:"New York", notes:"Primary treatment room",          color:"#3B82F6",status:"active"},
+  {id:2,name:"London",   notes:"Specialty & hot stone treatments",color:"#10B981",status:"active"},
+  {id:3,name:"Tokyo",    notes:"Sports & deep tissue",            color:"#F43F5E",status:"active"},
+  {id:4,name:"Paris",    notes:"Consultations & intake",          color:"#F59E0B",status:"active"},
+];
+const INIT_EQUIP = [
+  {id:1, name:"Ultrasound Machine",   serial:"US-001",status:"available",  notes:""},
+  {id:2, name:"Shockwave Therapy",    serial:"SW-001",status:"available",  notes:""},
+  {id:3, name:"TENS Unit",            serial:"TN-001",status:"maintenance",notes:"Needs calibration"},
+  {id:4, name:"Infrared Lamp",        serial:"IL-001",status:"available",  notes:""},
+  {id:5, name:"Hot Stone Heater",     serial:"HS-001",status:"available",  notes:"Pre-heat 30 min before use"},
+  {id:6, name:"Cupping Set",          serial:"CS-001",status:"available",  notes:""},
+  {id:7, name:"Percussion Gun",       serial:"PG-001",status:"available",  notes:""},
+  {id:8, name:"Lymphatic Drainage Kit",serial:"LD-001",status:"available", notes:""},
+  {id:9, name:"Foam Roller Pro",      serial:"FR-001",status:"available",  notes:""},
+  {id:10,name:"Dry Needling Kit",     serial:"DN-001",status:"available",  notes:"Sterile single-use needles"},
+];
+// equipBookings: [{equipId, startH, startM, durationMins}]
+const INIT_APPTS = [
+  {id:1, client:"Sarah Morrison", type:"Deep Tissue",mins:60,h:9, m:0, day:0,pId:1,status:"confirmed",roomId:1,equipBookings:[{equipId:1,startH:9, startM:0, durationMins:20},{equipId:2,startH:9, startM:20,durationMins:30}]},
+  {id:2, client:"Tom Reyes",      type:"Swedish",    mins:90,h:10,m:0, day:0,pId:2,status:"confirmed",roomId:2,equipBookings:[{equipId:5,startH:10,startM:15,durationMins:30}]},
+  {id:3, client:"Linda Park",     type:"Hot Stone",  mins:75,h:11,m:30,day:0,pId:3,status:"pending",  roomId:3,equipBookings:[{equipId:5,startH:11,startM:40,durationMins:45}]},
+  {id:4, client:"Chris Wang",     type:"Sports",     mins:60,h:9, m:30,day:1,pId:1,status:"confirmed",roomId:1,equipBookings:[{equipId:2,startH:9, startM:30,durationMins:25},{equipId:4,startH:9, startM:55,durationMins:20}]},
+  {id:5, client:"Emma Davis",     type:"Relaxation", mins:60,h:14,m:0, day:1,pId:2,status:"confirmed",roomId:2,equipBookings:[{equipId:4,startH:14,startM:20,durationMins:20}]},
+  {id:6, client:"Robert Kim",     type:"Deep Tissue",mins:90,h:10,m:0, day:2,pId:1,status:"confirmed",roomId:1,equipBookings:[{equipId:1,startH:10,startM:0, durationMins:20},{equipId:2,startH:10,startM:25,durationMins:30}]},
+  {id:7, client:"Aisha Okonkwo",  type:"Prenatal",   mins:60,h:13,m:0, day:2,pId:3,status:"pending",  roomId:3,equipBookings:[]},
+  {id:8, client:"Nina Patel",     type:"Relaxation", mins:60,h:15,m:30,day:2,pId:2,status:"confirmed",roomId:2,equipBookings:[{equipId:7,startH:15,startM:40,durationMins:15}]},
+  {id:9, client:"Ben Okafor",     type:"Deep Tissue",mins:60,h:9, m:0, day:3,pId:3,status:"pending",  roomId:3,equipBookings:[{equipId:2,startH:9, startM:0, durationMins:20}]},
+  {id:10,client:"Daniel Lee",     type:"Swedish",    mins:60,h:15,m:0, day:3,pId:2,status:"confirmed",roomId:2,equipBookings:[]},
+  {id:11,client:"Maria Santos",   type:"Hot Stone",  mins:90,h:10,m:30,day:4,pId:1,status:"confirmed",roomId:1,equipBookings:[{equipId:5,startH:10,startM:35,durationMins:60},{equipId:6,startH:11,startM:0,durationMins:20}]},
+  {id:12,client:"Jack Thompson",  type:"Sports",     mins:60,h:11,m:0, day:4,pId:3,status:"confirmed",roomId:3,equipBookings:[{equipId:2,startH:11,startM:0, durationMins:30}]},
+  {id:13,client:"Priya Sharma",   type:"Swedish",    mins:60,h:14,m:0, day:4,pId:2,status:"confirmed",roomId:2,equipBookings:[{equipId:4,startH:14,startM:0, durationMins:30}]},
+];
+const INIT_CLIENTS = [
+  {id:1, first:"Sarah",  last:"Morrison", email:"sarah.m@email.com",  phone:"555-0101",dob:"1990-03-15",pronouns:"She/Her", allergies:"None",notes:"Prefers medium pressure. Avoid neck area.",tags:["Regular"]},
+  {id:2, first:"Tom",    last:"Reyes",    email:"tom.r@email.com",    phone:"555-0102",dob:"1985-07-22",pronouns:"He/Him",  allergies:"Lavender oil",notes:"Athlete – focus on legs and glutes.",tags:["Athlete"]},
+  {id:3, first:"Linda",  last:"Park",     email:"linda.p@email.com",  phone:"555-0103",dob:"1978-11-08",pronouns:"She/Her", allergies:"None",notes:"Prenatal – second trimester.",tags:["Prenatal","Regular"]},
+  {id:4, first:"Chris",  last:"Wang",     email:"chris.w@email.com",  phone:"555-0104",dob:"1995-01-30",pronouns:"He/Him",  allergies:"None",notes:"Recovering from shoulder injury.",tags:["Injury"]},
+  {id:5, first:"Emma",   last:"Davis",    email:"emma.d@email.com",   phone:"555-0105",dob:"1992-09-14",pronouns:"She/Her", allergies:"Nut oils",notes:"Monthly maintenance sessions.",tags:["Regular"]},
+  {id:6, first:"Robert", last:"Kim",      email:"robert.k@email.com", phone:"555-0106",dob:"1980-04-27",pronouns:"He/Him",  allergies:"None",notes:"Chronic lower back tension.",tags:["Chronic"]},
+  {id:7, first:"Aisha",  last:"Okonkwo",  email:"aisha.o@email.com",  phone:"555-0107",dob:"1998-06-03",pronouns:"She/Her", allergies:"Fragrance",notes:"Third trimester. Side-lying position only.",tags:["Prenatal"]},
+  {id:8, first:"Nina",   last:"Patel",    email:"nina.p@email.com",   phone:"555-0108",dob:"1988-12-19",pronouns:"She/Her", allergies:"None",notes:"Stress management program.",tags:["Regular"]},
+];
+const INIT_NOTES = [
+  {id:1,clientId:1,apptId:1,date:"2026-04-21",practId:1,
+   subjective:"Client reports persistent tension in upper trapezius and neck. Rates pain 5/10. Sleeping poorly due to stiffness.",
+   objective:"Palpable tightness bilateral trapezius, left SCM guarding. Limited cervical rotation ~60% ROM. Slight elevation of left shoulder at rest.",
+   assessment:"Moderate upper crossed syndrome with secondary cervicogenic tension. Posture likely contributing – client works at desk 8+ hrs/day.",
+   plan:"60-min deep tissue targeting upper back and cervical spine weekly x4. Recommend ergonomic assessment. Home stretching protocol provided."},
+  {id:2,clientId:2,apptId:2,date:"2026-04-21",practId:2,
+   subjective:"Post-marathon recovery. Reports bilateral IT band tightness and right hamstring fatigue. Pain 3/10 at rest, 6/10 with activity.",
+   objective:"Tenderness along right IT band and hamstring insertion. Good ROM overall. Mild inflammation around right knee.",
+   assessment:"Post-race muscle fatigue with minor IT band syndrome. No acute injury detected.",
+   plan:"90-min sports recovery session. Focus on lower extremity flush and IT band work. Follow-up in 2 weeks. Advise rest from running 5–7 days."},
+  {id:3,clientId:6,apptId:6,date:"2026-04-21",practId:1,
+   subjective:"Recurring lower back pain, rates 6/10. Worse in the morning. Notes improvement after last session.",
+   objective:"Restricted lumbar flexion ~50%. Quadratus lumborum tightness bilateral. Mild SI joint tenderness on left.",
+   assessment:"Chronic lumbar tension with possible SI joint involvement. Previous sessions showing positive response.",
+   plan:"Continue bi-weekly deep tissue on lumbar and glutes. Refer to physio for SI joint assessment. Core strengthening exercises prescribed."},
+];
+
+// ═══════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════
+const DAYS   = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+const DATES  = [21,22,23,24,25,26,27];
+const TODAY  = 0;
+const HOUR_H = 64;
+const START_H= 8;
+const END_H  = 19;
+const HOURS  = Array.from({length:END_H-START_H},(_,i)=>START_H+i);
+const TREATMENT_TYPES=["Deep Tissue","Swedish","Hot Stone","Sports","Relaxation","Prenatal","Lymphatic","Reflexology","Cupping","Trigger Point"];
+const EQUIP_STATUSES=["available","in-use","maintenance","retired"];
+const TAG_COLORS={"Regular":"#DBEAFE","Athlete":"#D1FAE5","Prenatal":"#FCE7F3","Injury":"#FEF3C7","Chronic":"#FEE2E2","New":"#EDE9FE"};
+const TYPE_PAL={
+  "Deep Tissue":{bg:"#DBEAFE",text:"#1D4ED8",border:"#93C5FD"},
+  "Swedish":{bg:"#D1FAE5",text:"#065F46",border:"#6EE7B7"},
+  "Hot Stone":{bg:"#FEF3C7",text:"#92400E",border:"#FCD34D"},
+  "Sports":{bg:"#EDE9FE",text:"#5B21B6",border:"#C4B5FD"},
+  "Relaxation":{bg:"#FCE7F3",text:"#9D174D",border:"#F9A8D4"},
+  "Prenatal":{bg:"#FEE2E2",text:"#991B1B",border:"#FCA5A5"},
+  "Lymphatic":{bg:"#F0FDF4",text:"#166534",border:"#86EFAC"},
+  "Reflexology":{bg:"#FFF7ED",text:"#9A3412",border:"#FDBA74"},
+  "Cupping":{bg:"#FDF4FF",text:"#7E22CE",border:"#E9D5FF"},
+  "Trigger Point":{bg:"#FFF1F2",text:"#9F1239",border:"#FECDD3"},
+};
+const TYPE_PAL_DK={
+  "Deep Tissue":{bg:"rgba(59,130,246,0.18)",text:"#93C5FD",border:"rgba(59,130,246,0.35)"},
+  "Swedish":{bg:"rgba(16,185,129,0.15)",text:"#6EE7B7",border:"rgba(16,185,129,0.3)"},
+  "Hot Stone":{bg:"rgba(245,158,11,0.15)",text:"#FCD34D",border:"rgba(245,158,11,0.3)"},
+  "Sports":{bg:"rgba(139,92,246,0.18)",text:"#C4B5FD",border:"rgba(139,92,246,0.35)"},
+  "Relaxation":{bg:"rgba(236,72,153,0.14)",text:"#FDA4AF",border:"rgba(236,72,153,0.3)"},
+  "Prenatal":{bg:"rgba(239,68,68,0.14)",text:"#FCA5A5",border:"rgba(239,68,68,0.3)"},
+  "Lymphatic":{bg:"rgba(34,197,94,0.13)",text:"#86EFAC",border:"rgba(34,197,94,0.28)"},
+  "Reflexology":{bg:"rgba(251,146,60,0.14)",text:"#FDBA74",border:"rgba(251,146,60,0.3)"},
+  "Cupping":{bg:"rgba(168,85,247,0.15)",text:"#E9D5FF",border:"rgba(168,85,247,0.3)"},
+  "Trigger Point":{bg:"rgba(244,63,94,0.15)",text:"#FECDD3",border:"rgba(244,63,94,0.3)"},
+};
+const EQUIP_COLORS=["#3B82F6","#10B981","#F59E0B","#8B5CF6","#F43F5E","#06B6D4","#84CC16","#EC4899","#F97316","#14B8A6"];
+
+// ═══════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════
+const LIGHT={
+  bg:"#EDF1F7",surface:"#FFFFFF",surfaceAlt:"#F8FAFC",surfaceHover:"#F1F5F9",
+  sidebar:"#0A1628",sidebarHover:"rgba(255,255,255,0.07)",sidebarActive:"rgba(255,255,255,0.13)",
+  sidebarText:"rgba(255,255,255,0.55)",sidebarTextActive:"#FFFFFF",sidebarLogo:"#60A5FA",
+  accent:"#1B7FE8",accentHover:"#1565D1",accentText:"#FFF",accentBg:"#EFF6FF",accentBorder:"#BFDBFE",
+  text:"#0F172A",textSub:"#475569",textMuted:"#94A3B8",
+  border:"#E2E8F0",borderLight:"#F1F5F9",
+  gridLine:"#F0F4F8",todayBg:"rgba(27,127,232,0.04)",todayHeader:"#1B7FE8",
+  danger:"#EF4444",dangerBg:"#FEF2F2",dangerBorder:"#FECACA",
+  success:"#22C55E",warning:"#F59E0B",isDark:false,
+};
+const DARK={
+  bg:"#0A0F1A",surface:"#111827",surfaceAlt:"#1A2235",surfaceHover:"#1E2A40",
+  sidebar:"#060C18",sidebarHover:"rgba(255,255,255,0.05)",sidebarActive:"rgba(255,255,255,0.1)",
+  sidebarText:"rgba(255,255,255,0.45)",sidebarTextActive:"#FFFFFF",sidebarLogo:"#60A5FA",
+  accent:"#60A5FA",accentHover:"#3B82F6",accentText:"#FFF",accentBg:"rgba(96,165,250,0.1)",accentBorder:"rgba(96,165,250,0.25)",
+  text:"#E2E8F0",textSub:"#64748B",textMuted:"#475569",
+  border:"#1E2A3D",borderLight:"#162030",
+  gridLine:"#111827",todayBg:"rgba(96,165,250,0.05)",todayHeader:"#60A5FA",
+  danger:"#F87171",dangerBg:"rgba(239,68,68,0.1)",dangerBorder:"rgba(239,68,68,0.3)",
+  success:"#4ADE80",warning:"#FCD34D",isDark:true,
+};
+
+// ═══════════════════════════════════════════════════
+// CONTEXT
+// ═══════════════════════════════════════════════════
+const Ctx = React.createContext(null);
+function useApp(){return useContext(Ctx);}
+
+// ═══════════════════════════════════════════════════
+// ICONS
+// ═══════════════════════════════════════════════════
+const ICON_D={
+  home:"M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z M9 22V12h6v10",
+  calendar:"M3 4h18v18H3z M16 2v4 M8 2v4 M3 10h18",
+  users:"M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2 M9 7a4 4 0 1 0 8 0 4 4 0 0 0-8 0 M23 21v-2a4 4 0 0 0-3-3.87 M16 3.13a4 4 0 0 1 0 7.75",
+  door:"M3 3h12v18H3z M15 9h4l2 2-2 2h-4 M9 12h.01",
+  tool:"M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z",
+  clipboard:"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2 M8 2h8v4H8z",
+  settings:"M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z",
+  search:"M21 21l-4.35-4.35 M11 19A8 8 0 1 0 11 3a8 8 0 0 0 0 16z",
+  plus:"M12 5v14 M5 12h14",
+  x:"M18 6L6 18 M6 6l12 12",
+  edit:"M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7 M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z",
+  trash:"M3 6h18 M19 6l-1 14H6L5 6 M8 6V4h8v2 M10 11v6 M14 11v6",
+  chevL:"M15 18l-6-6 6-6",chevR:"M9 18l6-6-6-6",chevD:"M6 9l6 6 6-6",
+  sun:"M12 7a5 5 0 1 0 0 10A5 5 0 0 0 12 7z M12 1v2 M12 21v2 M4.22 4.22l1.42 1.42 M18.36 18.36l1.42 1.42 M1 12h2 M21 12h2 M4.22 19.78l1.42-1.42 M18.36 5.64l1.42-1.42",
+  moon:"M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z",
+  bell:"M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9 M13.73 21a2 2 0 0 1-3.46 0",
+  check:"M20 6L9 17l-5-5",
+  clock:"M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z M12 6v6l4 2",
+  note:"M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+  user:"M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2 M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z",
+  mail:"M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z M22 6l-10 7L2 6",
+  phone:"M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z",
+  tag:"M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z M7 7h.01",
+  eye:"M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z",
+  arrowL:"M19 12H5 M12 19l-7-7 7-7",
+};
+function Ic({n,s=16,c="currentColor",w=1.5}){
+  const d=ICON_D[n]||"";
+  return(<svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={w} strokeLinecap="round" strokeLinejoin="round">
+    {d.split(" M").map((seg,i)=><path key={i} d={(i===0?"":" M")+seg}/>)}
+  </svg>);
+}
+
+// ═══════════════════════════════════════════════════
+// SHARED UI
+// ═══════════════════════════════════════════════════
+function Btn({children,variant="primary",onClick,size="md",disabled,icon,danger}){
+  const {theme:t}=useApp();
+  const sz={sm:{padding:"4px 10px",fontSize:12},md:{padding:"7px 14px",fontSize:13},lg:{padding:"9px 18px",fontSize:14}};
+  const vr={
+    primary:{background:danger?t.danger:t.accent,color:"#fff",border:"none"},
+    secondary:{background:t.surfaceAlt,color:t.textSub,border:`1px solid ${t.border}`},
+    ghost:{background:"transparent",color:t.textSub,border:"none"},
+  };
+  return(<button onClick={disabled?undefined:onClick} style={{display:"inline-flex",alignItems:"center",gap:6,borderRadius:7,cursor:disabled?"not-allowed":"pointer",fontFamily:"inherit",fontWeight:600,transition:"background 0.12s",opacity:disabled?0.5:1,...sz[size],...vr[variant]}}>
+    {icon&&<Ic n={icon} s={13} c="currentColor" w={2.5}/>}{children}
+  </button>);
+}
+function Badge({label,bg,color,border}){
+  return(<span style={{display:"inline-flex",alignItems:"center",padding:"2px 8px",borderRadius:5,fontSize:11,fontWeight:600,background:bg||"#F1F5F9",color:color||"#475569",border:`1px solid ${border||"transparent"}`,whiteSpace:"nowrap"}}>{label}</span>);
+}
+function StatusBadge({status}){
+  const m={
+    confirmed:{label:"Confirmed",bg:"#DCFCE7",color:"#166534",border:"#BBF7D0"},
+    pending:{label:"Pending",bg:"#FEF3C7",color:"#92400E",border:"#FDE68A"},
+    cancelled:{label:"Cancelled",bg:"#FEE2E2",color:"#991B1B",border:"#FECACA"},
+    available:{label:"Available",bg:"#DCFCE7",color:"#166534",border:"#BBF7D0"},
+    "in-use":{label:"In Use",bg:"#DBEAFE",color:"#1D4ED8",border:"#BFDBFE"},
+    maintenance:{label:"Maintenance",bg:"#FEF3C7",color:"#92400E",border:"#FDE68A"},
+    retired:{label:"Retired",bg:"#F1F5F9",color:"#64748B",border:"#E2E8F0"},
+    active:{label:"Active",bg:"#DCFCE7",color:"#166534",border:"#BBF7D0"},
+    inactive:{label:"Inactive",bg:"#F1F5F9",color:"#64748B",border:"#E2E8F0"},
+  };
+  const s=m[status]||m.active;
+  return<Badge label={s.label} bg={s.bg} color={s.color} border={s.border}/>;
+}
+function Modal({title,onClose,children,width=520,footer}){
+  const {theme:t}=useApp();
+  return(<div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.45)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,backdropFilter:"blur(3px)"}}>
+    <div style={{width,background:t.surface,borderRadius:14,boxShadow:"0 20px 60px rgba(0,0,0,0.3)",display:"flex",flexDirection:"column",maxHeight:"90vh",overflow:"hidden"}}>
+      <div style={{padding:"18px 22px 14px",display:"flex",alignItems:"center",borderBottom:`1px solid ${t.border}`}}>
+        <span style={{fontSize:16,fontWeight:700,color:t.text}}>{title}</span>
+        <button onClick={onClose} style={{marginLeft:"auto",background:"transparent",border:"none",cursor:"pointer",color:t.textMuted,borderRadius:6,padding:4}}><Ic n="x" s={18} c={t.textMuted}/></button>
+      </div>
+      <div style={{padding:"18px 22px",overflowY:"auto",flex:1}}>{children}</div>
+      {footer&&<div style={{padding:"14px 22px",borderTop:`1px solid ${t.border}`,display:"flex",gap:8,justifyContent:"flex-end"}}>{footer}</div>}
+    </div>
+  </div>);
+}
+function Field({label,required,children,hint}){
+  const {theme:t}=useApp();
+  return(<div style={{marginBottom:14}}>
+    <label style={{display:"block",fontSize:12,fontWeight:600,color:t.textSub,marginBottom:5,letterSpacing:0.2}}>
+      {label}{required&&<span style={{color:t.accent,marginLeft:2}}>*</span>}
+    </label>
+    {children}
+    {hint&&<div style={{fontSize:11,color:t.textMuted,marginTop:3}}>{hint}</div>}
+  </div>);
+}
+function Inp({value,onChange,placeholder,type="text",style={}}){
+  const {theme:t}=useApp();
+  return(<input type={type} value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}
+    style={{width:"100%",padding:"8px 10px",borderRadius:7,border:`1px solid ${t.border}`,background:t.surfaceAlt,color:t.text,fontSize:13,outline:"none",...style}}/>);
+}
+function Sel({value,onChange,children,style={}}){
+  const {theme:t}=useApp();
+  return(<select value={value} onChange={e=>onChange(e.target.value)}
+    style={{width:"100%",padding:"8px 10px",borderRadius:7,border:`1px solid ${t.border}`,background:t.surfaceAlt,color:t.text,fontSize:13,outline:"none",...style}}>
+    {children}
+  </select>);
+}
+function Txta({value,onChange,placeholder,rows=3}){
+  const {theme:t}=useApp();
+  return(<textarea value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder} rows={rows}
+    style={{width:"100%",padding:"8px 10px",borderRadius:7,border:`1px solid ${t.border}`,background:t.surfaceAlt,color:t.text,fontSize:13,outline:"none",resize:"vertical",lineHeight:1.5}}/>);
+}
+function ConfirmDlg({title,message,onConfirm,onCancel}){
+  return(<Modal title={title} onClose={onCancel} width={400}
+    footer={<><Btn variant="secondary" onClick={onCancel}>Cancel</Btn><Btn danger onClick={onConfirm}>Delete</Btn></>}>
+    <p style={{fontSize:14,color:"#475569",lineHeight:1.6}}>{message}</p>
+  </Modal>);
+}
+function Divider(){const {theme:t}=useApp();return<div style={{height:1,background:t.border,margin:"16px 0"}}/>;}
+
+// ═══════════════════════════════════════════════════
+// SIDEBAR
+// ═══════════════════════════════════════════════════
+const NAV=[
+  {id:"dashboard",label:"Dashboard",  icon:"home"},
+  {id:"calendar", label:"Calendar",   icon:"calendar"},
+  {id:"clients",  label:"Clients",    icon:"users"},
+  {id:"rooms",    label:"Rooms",      icon:"door"},
+  {id:"equipment",label:"Equipment",  icon:"tool"},
+  {id:"notes",    label:"SOAP Notes", icon:"clipboard"},
+];
+function Sidebar(){
+  const {screen,setScreen,theme:t,appts}=useApp();
+  const todayCount=appts.filter(a=>a.day===TODAY).length;
+  return(<div style={{width:200,height:"100%",background:t.sidebar,display:"flex",flexDirection:"column",flexShrink:0,borderRight:"1px solid rgba(0,0,0,0.25)"}}>
+    <div style={{padding:"20px 18px 16px",display:"flex",alignItems:"center",gap:10}}>
+      <div style={{width:30,height:30,borderRadius:8,background:t.sidebarLogo,display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <svg width="15" height="15" viewBox="0 0 14 14" fill="none">
+          <path d="M7 1L13 4.5V10.5L7 14L1 10.5V4.5L7 1Z" fill="white" fillOpacity="0.9"/>
+          <path d="M7 4L10 5.73V9.27L7 11L4 9.27V5.73L7 4Z" fill={t.sidebarLogo}/>
+        </svg>
+      </div>
+      <span style={{fontSize:17,fontWeight:700,color:"#fff",letterSpacing:-0.3}}>Nova</span>
+      <span style={{marginLeft:"auto",fontSize:10,background:"rgba(255,255,255,0.1)",color:"rgba(255,255,255,0.4)",borderRadius:4,padding:"1px 5px",fontWeight:600}}>Admin</span>
+    </div>
+    <div style={{margin:"0 10px 14px",padding:"7px 10px",borderRadius:7,background:"rgba(255,255,255,0.06)",display:"flex",alignItems:"center",gap:7,cursor:"pointer"}}>
+      <span style={{fontSize:13}}>🏢</span>
+      <span style={{fontSize:12,color:"rgba(255,255,255,0.65)",fontWeight:500}}>Main Clinic</span>
+      <Ic n="chevD" s={10} c="rgba(255,255,255,0.3)" w={2}/>
+    </div>
+    <nav style={{flex:1,padding:"0 8px",display:"flex",flexDirection:"column",gap:1}}>
+      {NAV.map(item=>{
+        const active=screen===item.id;
+        return(<button key={item.id} onClick={()=>setScreen(item.id)} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",borderRadius:7,border:"none",cursor:"pointer",textAlign:"left",width:"100%",fontFamily:"inherit",background:active?t.sidebarActive:"transparent",color:active?t.sidebarTextActive:t.sidebarText,fontSize:13.5,fontWeight:active?600:400}}>
+          <Ic n={item.icon} s={15} c={active?t.sidebarTextActive:t.sidebarText} w={active?2:1.5}/>
+          {item.label}
+          {item.id==="calendar"&&<span style={{marginLeft:"auto",fontSize:10,background:active?"rgba(255,255,255,0.2)":"rgba(255,255,255,0.08)",color:active?"#fff":"rgba(255,255,255,0.4)",borderRadius:4,padding:"1px 5px",fontWeight:600}}>{todayCount}</span>}
+        </button>);
+      })}
+    </nav>
+    <div style={{padding:"10px 12px 8px",borderTop:"1px solid rgba(255,255,255,0.07)"}}>
+      <div style={{fontSize:10,fontWeight:600,color:"rgba(255,255,255,0.25)",letterSpacing:0.8,marginBottom:7,textTransform:"uppercase"}}>On Shift</div>
+      {PRACTITIONERS.map(p=>(
+        <div key={p.id} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 2px"}}>
+          <div style={{width:22,height:22,borderRadius:6,background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white",flexShrink:0}}>{p.initials}</div>
+          <span style={{fontSize:11.5,fontWeight:500,color:"rgba(255,255,255,0.7)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{p.name}</span>
+          <div style={{width:6,height:6,borderRadius:3,background:"#22C55E",flexShrink:0}}/>
+        </div>
+      ))}
+    </div>
+    <div style={{padding:"6px 8px 14px"}}>
+      <button style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",width:"100%",background:"transparent",border:"none",cursor:"pointer",color:t.sidebarText,fontSize:13.5,borderRadius:7,fontFamily:"inherit"}}>
+        <Ic n="settings" s={15} c={t.sidebarText}/>Settings
+      </button>
+    </div>
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// TOPBAR
+// ═══════════════════════════════════════════════════
+function TopBar({title,subtitle}){
+  const {theme:t,isDark,setIsDark,setApptModal}=useApp();
+  return(<div style={{height:56,display:"flex",alignItems:"center",padding:"0 24px",background:t.surface,borderBottom:`1px solid ${t.border}`,flexShrink:0,gap:12}}>
+    <div>
+      <div style={{fontSize:16,fontWeight:700,color:t.text,letterSpacing:-0.3}}>{title}</div>
+      {subtitle&&<div style={{fontSize:11.5,color:t.textMuted,marginTop:0.5}}>{subtitle}</div>}
+    </div>
+    <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,padding:"0 11px",height:32,borderRadius:7,border:`1px solid ${t.border}`,background:t.surfaceAlt,color:t.textMuted,fontSize:12.5,width:180}}>
+        <Ic n="search" s={13} c={t.textMuted}/><span>Search…</span>
+      </div>
+      <Btn icon="plus" onClick={()=>setApptModal({})}>New Appointment</Btn>
+      <button onClick={()=>setIsDark(d=>!d)} style={{width:32,height:32,borderRadius:7,border:`1px solid ${t.border}`,background:t.surfaceAlt,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Ic n={isDark?"sun":"moon"} s={14} c={t.textSub}/>
+      </button>
+      <button style={{position:"relative",width:32,height:32,borderRadius:7,border:`1px solid ${t.border}`,background:t.surfaceAlt,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <Ic n="bell" s={14} c={t.textSub}/>
+        <div style={{position:"absolute",top:6,right:6,width:6,height:6,borderRadius:3,background:"#EF4444",border:`1.5px solid ${t.surface}`}}/>
+      </button>
+      <div style={{width:32,height:32,borderRadius:8,background:t.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:"white",cursor:"pointer"}}>JD</div>
+    </div>
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════
+function DashboardScreen(){
+  const {theme:t,appts,rooms,equip,setScreen}=useApp();
+  const todayAppts=appts.filter(a=>a.day===TODAY).sort((a,b)=>a.h*60+a.m-(b.h*60+b.m));
+  const confirmed=todayAppts.filter(a=>a.status==="confirmed").length;
+  const pending=todayAppts.filter(a=>a.status==="pending").length;
+  const revenue=todayAppts.reduce((s,a)=>s+({60:120,75:140,90:155,120:200}[a.mins]||120),0);
+  const usedRoomIds=[...new Set(todayAppts.map(a=>a.roomId))];
+  const maintEquip=equip.filter(e=>e.status==="maintenance").length;
+  const fmtT=(h,m)=>{const ap=h>=12?"pm":"am";const hh=h>12?h-12:h;return`${hh}:${m.toString().padStart(2,"0")} ${ap}`;};
+  const Stat=({icon,label,value,sub,accent,warn})=>(
+    <div style={{background:t.surface,borderRadius:10,padding:"18px 20px",border:`1px solid ${t.border}`}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
+        <span style={{fontSize:12.5,fontWeight:600,color:t.textSub}}>{label}</span>
+        <div style={{width:32,height:32,borderRadius:8,background:accent?t.accentBg:t.surfaceAlt,display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <Ic n={icon} s={15} c={accent?t.accent:warn?t.warning:t.textMuted}/>
+        </div>
+      </div>
+      <div style={{fontSize:28,fontWeight:700,color:warn&&value>0?t.warning:t.text,letterSpacing:-1}}>{value}</div>
+      <div style={{fontSize:12,color:t.textMuted,marginTop:4}}>{sub}</div>
+    </div>
+  );
+  return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+    <div style={{marginBottom:20}}>
+      <div style={{fontSize:22,fontWeight:700,color:t.text,letterSpacing:-0.5}}>Good morning, Dr. Dean 👋</div>
+      <div style={{fontSize:14,color:t.textMuted,marginTop:3}}>Monday, April 21, 2026 · Here's your clinic overview</div>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:14,marginBottom:24}}>
+      <Stat icon="calendar" label="Today's Appointments" value={todayAppts.length} sub={`${confirmed} confirmed · ${pending} pending`} accent/>
+      <Stat icon="door"     label="Est. Revenue Today"   value={`$${revenue}`}      sub="Across all practitioners"/>
+      <Stat icon="users"    label="Rooms in Use"         value={`${usedRoomIds.length}/${rooms.filter(r=>r.status==="active").length}`} sub="Currently occupied" accent/>
+      <Stat icon="tool"     label="Equipment Issues"     value={maintEquip}          sub="Needing maintenance" warn={maintEquip>0}/>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 300px",gap:18}}>
+      <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+        <div style={{padding:"16px 20px",borderBottom:`1px solid ${t.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{fontWeight:700,fontSize:15,color:t.text}}>Today's Schedule</div>
+          <button onClick={()=>setScreen("calendar")} style={{fontSize:12,color:t.accent,background:"transparent",border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:500}}>View calendar →</button>
+        </div>
+        {todayAppts.map(appt=>{
+          const pract=PRACTITIONERS.find(p=>p.id===appt.pId);
+          const room=rooms.find(r=>r.id===appt.roomId);
+          const pal=(t.isDark?TYPE_PAL_DK:TYPE_PAL)[appt.type]||TYPE_PAL["Deep Tissue"];
+          const usedEquip=equip.filter(e=>appt.equipBookings?.some(b=>b.equipId===e.id));
+          return(<div key={appt.id} style={{padding:"13px 20px",borderBottom:`1px solid ${t.borderLight||t.border}`,display:"flex",gap:14,alignItems:"flex-start"}}>
+            <div style={{flexShrink:0,minWidth:46}}>
+              <div style={{fontSize:13,fontWeight:700,color:t.text}}>{fmtT(appt.h,appt.m)}</div>
+              <div style={{fontSize:10.5,color:t.textMuted}}>{appt.mins}min</div>
+            </div>
+            <div style={{width:3,alignSelf:"stretch",borderRadius:2,background:pract?.color,flexShrink:0}}/>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}>
+                <span style={{fontWeight:600,color:t.text,fontSize:14}}>{appt.client}</span>
+                <StatusBadge status={appt.status}/>
+              </div>
+              <div style={{display:"flex",gap:6,marginBottom:4}}><Badge label={appt.type} bg={pal.bg} color={pal.text} border={pal.border}/></div>
+              <div style={{display:"flex",gap:10,fontSize:12,color:t.textMuted,flexWrap:"wrap"}}>
+                {room&&<span style={{display:"flex",alignItems:"center",gap:3}}><Ic n="door" s={11} c={t.textMuted}/>{room.name}</span>}
+                {usedEquip.length>0&&<span style={{display:"flex",alignItems:"center",gap:3}}><Ic n="tool" s={11} c={t.textMuted}/>{usedEquip.map(e=>e.name).join(", ")}</span>}
+              </div>
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
+              <div style={{width:24,height:24,borderRadius:6,background:pract?.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,color:"white"}}>{pract?.initials}</div>
+              <span style={{fontSize:12,color:t.textSub}}>{pract?.name}</span>
+            </div>
+          </div>);
+        })}
+      </div>
+      <div style={{display:"flex",flexDirection:"column",gap:14}}>
+        <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:`1px solid ${t.border}`,fontWeight:700,fontSize:14,color:t.text}}>Staff on Shift</div>
+          {PRACTITIONERS.map(p=>{
+            const cnt=todayAppts.filter(a=>a.pId===p.id).length;
+            return(<div key={p.id} style={{padding:"10px 18px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${t.borderLight||t.border}`}}>
+              <div style={{width:30,height:30,borderRadius:8,background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"white"}}>{p.initials}</div>
+              <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:t.text}}>{p.name}</div><div style={{fontSize:11,color:t.textMuted}}>{p.role}</div></div>
+              <div style={{textAlign:"right"}}><div style={{fontSize:14,fontWeight:700,color:t.text}}>{cnt}</div><div style={{fontSize:11,color:t.textMuted}}>appts</div></div>
+            </div>);
+          })}
+        </div>
+        <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+          <div style={{padding:"14px 18px",borderBottom:`1px solid ${t.border}`,fontWeight:700,fontSize:14,color:t.text}}>Room Status</div>
+          {rooms.map(r=>{
+            const inUse=usedRoomIds.includes(r.id);
+            return(<div key={r.id} style={{padding:"9px 18px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${t.borderLight||t.border}`}}>
+              <div style={{width:8,height:8,borderRadius:4,background:r.color,flexShrink:0}}/>
+              <span style={{fontSize:13,color:t.text,flex:1}}>{r.name}</span>
+              <StatusBadge status={inUse?"in-use":"available"}/>
+            </div>);
+          })}
+        </div>
+      </div>
+    </div>
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// CALENDAR
+// ═══════════════════════════════════════════════════
+function CalendarScreen(){
+  const {theme:t,appts,rooms,equip,setApptModal}=useApp();
+  const [calView,setCalView]=useState("week");
+  const [filterPId,setFilterPId]=useState(null);
+  const fmtH=h=>h>12?`${h-12}pm`:h===12?"12pm":`${h}am`;
+  const filteredAppts=filterPId?appts.filter(a=>a.pId===filterPId):appts;
+  const todayAppts=filteredAppts.filter(a=>a.day===TODAY);
+
+  // Equipment calendar data: equipId -> [{startH,startM,durationMins,client,day}]
+  const equipCalData=useMemo(()=>{
+    const r={};
+    appts.forEach(appt=>{
+      (appt.equipBookings||[]).forEach(eb=>{
+        if(!r[eb.equipId]) r[eb.equipId]=[];
+        r[eb.equipId].push({startH:eb.startH,startM:eb.startM,durationMins:eb.durationMins,client:appt.client,practId:appt.pId,day:appt.day,apptId:appt.id});
+      });
+    });
+    return r;
+  },[appts]);
+
+  const ApptCard=({appt,dayView=false})=>{
+    const [hov,setHov]=useState(false);
+    const pal=(t.isDark?TYPE_PAL_DK:TYPE_PAL)[appt.type]||TYPE_PAL["Deep Tissue"];
+    const pract=PRACTITIONERS.find(p=>p.id===appt.pId);
+    const room=rooms.find(r=>r.id===appt.roomId);
+    const topPx=((appt.h-START_H)+appt.m/60)*HOUR_H;
+    const hgtPx=Math.max((appt.mins/60)*HOUR_H-2,22);
+    const short=hgtPx<52;
+    const apptStartMins=appt.h*60+appt.m;
+    const bookingsToShow=(appt.equipBookings||[]).filter(b=>b.startH!==undefined);
+    return(<div onMouseEnter={()=>setHov(true)} onMouseLeave={()=>setHov(false)} onClick={()=>setApptModal(appt)}
+      style={{position:"absolute",top:topPx+1,left:2,right:2,height:hgtPx,borderRadius:6,border:`1px solid ${pal.border}`,background:pal.bg,
+        padding:short?"2px 7px":"7px 9px",cursor:"pointer",overflow:"hidden",
+        transition:"box-shadow 0.12s,transform 0.12s",boxShadow:hov?"0 4px 14px rgba(0,0,0,0.14)":"none",
+        transform:hov?"translateY(-1px)":"none",zIndex:hov?10:1,position:"absolute"}}>
+      {/* Equipment booking strips on right edge */}
+      {bookingsToShow.map((b,bi)=>{
+        const bStartMins=b.startH*60+b.startM;
+        const offsetFrac=Math.max(0,(bStartMins-apptStartMins)/appt.mins);
+        const durFrac=Math.min(b.durationMins/appt.mins, 1-offsetFrac);
+        const eqIdx=(b.equipId-1)%EQUIP_COLORS.length;
+        const col=EQUIP_COLORS[eqIdx];
+        return(<div key={bi} style={{position:"absolute",right:0,width:4,borderRadius:"0 5px 5px 0",
+          top:`${offsetFrac*100}%`,height:`${Math.max(durFrac*100,3)}%`,
+          background:col,opacity:0.85,zIndex:2}}/>);
+      })}
+      <div style={{display:"flex",alignItems:"center",gap:4,paddingRight:bookingsToShow.length>0?8:0}}>
+        {!dayView&&<div style={{width:5,height:5,borderRadius:3,background:pract?.color,flexShrink:0}}/>}
+        <span style={{fontSize:dayView?12:11,fontWeight:600,color:pal.text,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{appt.client}</span>
+        {appt.status==="pending"&&<span style={{marginLeft:"auto",fontSize:9,fontWeight:700,background:"rgba(245,158,11,0.2)",color:"#B45309",borderRadius:3,padding:"1px 4px",flexShrink:0}}>PENDING</span>}
+      </div>
+      {!short&&<div style={{fontSize:10.5,color:pal.text,opacity:0.8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",marginTop:1,paddingRight:bookingsToShow.length>0?8:0}}>
+        {appt.type} · {appt.mins}m{dayView&&room?` · ${room.name}`:""}
+      </div>}
+      {dayView&&!short&&bookingsToShow.length>0&&(
+        <div style={{marginTop:4,display:"flex",flexDirection:"column",gap:2}}>
+          {bookingsToShow.map((b,bi)=>{
+            const eq=equip.find(e=>e.id===b.equipId);
+            const col=EQUIP_COLORS[(b.equipId-1)%EQUIP_COLORS.length];
+            const fmtT=(h,m)=>{const ap=h>=12?"pm":"am";const hh=h>12?h-12:h;return`${hh}:${m.toString().padStart(2,"0")}${ap}`;};
+            return eq?(<div key={bi} style={{display:"flex",alignItems:"center",gap:4,fontSize:10,color:pal.text,opacity:0.75}}>
+              <div style={{width:5,height:5,borderRadius:3,background:col,flexShrink:0}}/>
+              <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{eq.name} · {fmtT(b.startH,b.startM)} ({b.durationMins}m)</span>
+            </div>):null;
+          })}
+        </div>
+      )}
+    </div>);
+  };
+
+  const TimeNeedle=()=>{
+    const top=(10.5-START_H)*HOUR_H;
+    return(<div style={{position:"absolute",top,left:0,right:0,zIndex:5,pointerEvents:"none",display:"flex",alignItems:"center"}}>
+      <div style={{width:8,height:8,borderRadius:4,background:t.danger,marginLeft:-4}}/>
+      <div style={{flex:1,height:1.5,background:t.danger,opacity:0.7}}/>
+    </div>);
+  };
+
+  const GridBase=({colCount,children})=>(
+    <div style={{flex:1,overflowY:"auto",display:"flex"}}>
+      <div style={{width:52,flexShrink:0,position:"relative",borderRight:`1px solid ${t.border}`}}>
+        {HOURS.map(h=><div key={h} style={{position:"absolute",top:(h-START_H)*HOUR_H-8,right:8,fontSize:10.5,fontWeight:500,color:t.textMuted}}>{fmtH(h)}</div>)}
+        <div style={{height:HOURS.length*HOUR_H}}/>
+      </div>
+      {children}
+    </div>
+  );
+
+  const SubHeader=()=>(
+    <div style={{background:t.surface,borderBottom:`1px solid ${t.border}`,padding:"12px 24px",display:"flex",flexDirection:"column",gap:10,flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"center",gap:10}}>
+        <button style={{width:28,height:28,borderRadius:6,border:`1px solid ${t.border}`,background:t.surfaceAlt,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="chevL" s={13} c={t.textSub}/></button>
+        <span style={{fontSize:15,fontWeight:700,color:t.text,minWidth:160}}>{calView==="day"?"Monday, April 21":calView==="equip"?"Equipment · April 21":"April 2026"}</span>
+        <button style={{width:28,height:28,borderRadius:6,border:`1px solid ${t.border}`,background:t.surfaceAlt,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><Ic n="chevR" s={13} c={t.textSub}/></button>
+        <button style={{height:28,padding:"0 11px",borderRadius:6,border:`1px solid ${t.accentBorder}`,background:t.accentBg,color:t.accent,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Today</button>
+        <div style={{marginLeft:"auto",display:"flex",gap:2,background:t.surfaceAlt,borderRadius:7,padding:2,border:`1px solid ${t.border}`}}>
+          {[["Day","day"],["Week","week"],["Equipment","equip"]].map(([label,key])=>{
+            const active=calView===key;
+            return(<button key={key} onClick={()=>setCalView(key)} style={{padding:"4px 11px",borderRadius:5,border:"none",cursor:"pointer",fontSize:12,fontWeight:active?600:400,fontFamily:"inherit",background:active?t.surface:"transparent",color:active?t.text:t.textMuted,boxShadow:active?"0 1px 3px rgba(0,0,0,0.08)":"none"}}>{label}</button>);
+          })}
+        </div>
+      </div>
+      <div style={{display:"flex",gap:6,alignItems:"center"}}>
+        <span style={{fontSize:11.5,color:t.textMuted,fontWeight:500}}>Staff:</span>
+        <button onClick={()=>setFilterPId(null)} style={{height:24,padding:"0 10px",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:11.5,border:`1px solid ${filterPId===null?t.accentBorder:t.border}`,background:filterPId===null?t.accentBg:t.surfaceAlt,color:filterPId===null?t.accent:t.textSub,fontWeight:filterPId===null?600:400}}>All</button>
+        {PRACTITIONERS.map(p=>(
+          <button key={p.id} onClick={()=>setFilterPId(filterPId===p.id?null:p.id)} style={{height:24,padding:"0 10px",borderRadius:5,cursor:"pointer",fontFamily:"inherit",fontSize:11.5,border:`1px solid ${filterPId===p.id?p.color+"88":t.border}`,background:filterPId===p.id?p.color+"18":t.surfaceAlt,color:filterPId===p.id?p.color:t.textSub,fontWeight:filterPId===p.id?600:400,display:"flex",alignItems:"center",gap:5}}>
+            <div style={{width:6,height:6,borderRadius:3,background:p.color}}/>{p.name}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  return(<div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+    <SubHeader/>
+    {/* WEEK */}
+    {calView==="week"&&(
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{display:"flex",background:t.surface,borderBottom:`1px solid ${t.border}`,flexShrink:0}}>
+          <div style={{width:52,flexShrink:0}}/>
+          {DAYS.map((day,di)=>{const isT=di===TODAY;return(<div key={di} style={{flex:1,padding:"10px 0",textAlign:"center",borderLeft:`1px solid ${t.border}`,background:isT?t.todayBg:"transparent"}}>
+            <div style={{fontSize:11,fontWeight:600,color:isT?t.todayHeader:t.textMuted,letterSpacing:0.5,textTransform:"uppercase"}}>{day}</div>
+            <div style={{display:"inline-flex",alignItems:"center",justifyContent:"center",width:28,height:28,borderRadius:7,background:isT?t.accent:"transparent",color:isT?"#fff":t.text,fontSize:14,fontWeight:isT?700:400,marginTop:2}}>{DATES[di]}</div>
+          </div>);})}
+        </div>
+        <GridBase>
+          {DAYS.map((_,di)=>{
+            const dayAppts=filteredAppts.filter(a=>a.day===di);const isT=di===TODAY;
+            return(<div key={di} style={{flex:1,position:"relative",borderLeft:`1px solid ${t.border}`,background:isT?t.todayBg:"transparent"}}>
+              {HOURS.map(h=><div key={h} style={{position:"absolute",top:(h-START_H)*HOUR_H,left:0,right:0,borderTop:`1px solid ${t.gridLine}`}}/>)}
+              {HOURS.map(h=><div key={`hh${h}`} style={{position:"absolute",top:(h-START_H)*HOUR_H+HOUR_H/2,left:8,right:0,borderTop:`1px dashed ${t.gridLine}`}}/>)}
+              {isT&&<TimeNeedle/>}
+              <div style={{height:HOURS.length*HOUR_H,position:"relative"}}>
+                {dayAppts.map(a=><ApptCard key={a.id} appt={a}/>)}
+              </div>
+            </div>);
+          })}
+        </GridBase>
+      </div>
+    )}
+    {/* DAY */}
+    {calView==="day"&&(
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{display:"flex",background:t.surface,borderBottom:`1px solid ${t.border}`,flexShrink:0}}>
+          <div style={{width:52,flexShrink:0}}/>
+          {PRACTITIONERS.filter(p=>!filterPId||p.id===filterPId).map(p=>(
+            <div key={p.id} style={{flex:1,padding:"12px 0",textAlign:"center",borderLeft:`1px solid ${t.border}`}}>
+              <div style={{width:36,height:36,borderRadius:10,background:p.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,color:"white",margin:"0 auto 4px"}}>{p.initials}</div>
+              <div style={{fontSize:13,fontWeight:600,color:t.text}}>{p.name}</div>
+              <div style={{fontSize:11,color:t.textMuted}}>{todayAppts.filter(a=>a.pId===p.id).length} appts</div>
+            </div>
+          ))}
+        </div>
+        <GridBase>
+          {PRACTITIONERS.filter(p=>!filterPId||p.id===filterPId).map(p=>{
+            const practAppts=todayAppts.filter(a=>a.pId===p.id);
+            return(<div key={p.id} style={{flex:1,position:"relative",borderLeft:`1px solid ${t.border}`,background:t.todayBg}}>
+              {HOURS.map(h=><div key={h} style={{position:"absolute",top:(h-START_H)*HOUR_H,left:0,right:0,borderTop:`1px solid ${t.gridLine}`}}/>)}
+              {HOURS.map(h=><div key={`hh${h}`} style={{position:"absolute",top:(h-START_H)*HOUR_H+HOUR_H/2,left:8,right:0,borderTop:`1px dashed ${t.gridLine}`}}/>)}
+              <TimeNeedle/>
+              <div style={{height:HOURS.length*HOUR_H,position:"relative"}}>
+                {practAppts.map(a=><ApptCard key={a.id} appt={a} dayView/>)}
+              </div>
+            </div>);
+          })}
+        </GridBase>
+      </div>
+    )}
+    {/* EQUIPMENT */}
+    {calView==="equip"&&(
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <div style={{display:"flex",background:t.surface,borderBottom:`1px solid ${t.border}`,flexShrink:0,padding:"8px 0"}}>
+          <div style={{width:160,flexShrink:0,padding:"0 12px",fontSize:11,fontWeight:700,color:t.textMuted,letterSpacing:0.4,textTransform:"uppercase",display:"flex",alignItems:"center"}}>Equipment</div>
+          <div style={{flex:1,fontSize:11,fontWeight:700,color:t.textMuted,letterSpacing:0.4,textTransform:"uppercase",display:"flex",alignItems:"center",paddingLeft:8,borderLeft:`1px solid ${t.border}`}}>Time · Today (April 21)</div>
+        </div>
+        <div style={{flex:1,overflowY:"auto"}}>
+          {equip.map((eq,ei)=>{
+            const bookings=(equipCalData[eq.id]||[]).filter(b=>b.day===TODAY);
+            const color=EQUIP_COLORS[ei%EQUIP_COLORS.length];
+            return(<div key={eq.id} style={{display:"flex",borderBottom:`1px solid ${t.border}`,minHeight:52}}>
+              <div style={{width:160,flexShrink:0,padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderRight:`1px solid ${t.border}`}}>
+                <div style={{width:8,height:8,borderRadius:4,background:color,flexShrink:0}}/>
+                <div>
+                  <div style={{fontSize:12.5,fontWeight:600,color:t.text,lineHeight:1.3}}>{eq.name}</div>
+                  <StatusBadge status={eq.status}/>
+                </div>
+              </div>
+              <div style={{flex:1,position:"relative",overflow:"hidden"}}>
+                {/* 11hr timeline */}
+                {HOURS.map(h=>(
+                  <div key={h} style={{position:"absolute",top:0,bottom:0,left:`${(h-START_H)/(END_H-START_H)*100}%`,width:1,background:t.borderLight||t.border}}/>
+                ))}
+                {/* Hour labels */}
+                {[9,11,13,15,17].map(h=>(
+                  <div key={h} style={{position:"absolute",top:2,left:`${(h-START_H)/(END_H-START_H)*100}%`,fontSize:9.5,color:t.textMuted,transform:"translateX(-50%)"}}>{fmtH(h)}</div>
+                ))}
+                {/* Booking blocks */}
+                {bookings.map((b,bi)=>{
+                  const startPct=((b.startH*60+b.startM-START_H*60)/((END_H-START_H)*60))*100;
+                  const widthPct=(b.durationMins/((END_H-START_H)*60))*100;
+                  const pract=PRACTITIONERS.find(p=>p.id===b.practId);
+                  return(<div key={bi} style={{
+                    position:"absolute",top:14,height:28,
+                    left:`${Math.max(0,startPct)}%`,width:`${widthPct}%`,
+                    borderRadius:5,background:color+"33",border:`1.5px solid ${color}`,
+                    display:"flex",alignItems:"center",padding:"0 6px",overflow:"hidden",cursor:"pointer",
+                  }}>
+                    <div style={{width:5,height:5,borderRadius:3,background:pract?.color,flexShrink:0,marginRight:4}}/>
+                    <span style={{fontSize:10.5,fontWeight:600,color:t.isDark?"#fff":t.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{b.client} · {b.durationMins}m</span>
+                  </div>);
+                })}
+                {bookings.length===0&&<div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",paddingLeft:12,fontSize:12,color:t.textMuted,fontStyle:"italic"}}>No bookings today</div>}
+              </div>
+            </div>);
+          })}
+        </div>
+      </div>
+    )}
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// ROOMS
+// ═══════════════════════════════════════════════════
+function RoomsScreen(){
+  const {theme:t,rooms,setRooms}=useApp();
+  const [modal,setModal]=useState(null);
+  const [del,setDel]=useState(null);
+  const COLORS=["#3B82F6","#10B981","#F43F5E","#F59E0B","#8B5CF6","#EC4899","#06B6D4","#84CC16"];
+  const save=data=>{
+    if(data.id) setRooms(r=>r.map(x=>x.id===data.id?data:x));
+    else setRooms(r=>[...r,{...data,id:Math.max(0,...r.map(x=>x.id))+1}]);
+    setModal(null);
+  };
+  return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+      <div>
+        <div style={{fontSize:20,fontWeight:700,color:t.text,letterSpacing:-0.4}}>Rooms</div>
+        <div style={{fontSize:13,color:t.textMuted,marginTop:2}}>{rooms.length} rooms · {rooms.filter(r=>r.status==="active").length} active</div>
+      </div>
+      <Btn icon="plus" onClick={()=>setModal({name:"",notes:"",color:COLORS[0],status:"active"})}>Add Room</Btn>
+    </div>
+    <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+      <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <thead><tr style={{background:t.surfaceAlt}}>
+          {["Room","Notes","Status","Actions"].map(h=><th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11.5,fontWeight:700,color:t.textMuted,letterSpacing:0.3,textTransform:"uppercase",borderBottom:`1px solid ${t.border}`}}>{h}</th>)}
+        </tr></thead>
+        <tbody>
+          {rooms.map((room,i)=>(
+            <tr key={room.id} style={{borderBottom:i<rooms.length-1?`1px solid ${t.borderLight||t.border}`:"none"}}>
+              <td style={{padding:"13px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:12,height:12,borderRadius:4,background:room.color,flexShrink:0}}/>
+                  <span style={{fontWeight:600,fontSize:14,color:t.text}}>{room.name}</span>
+                </div>
+              </td>
+              <td style={{padding:"13px 16px",fontSize:12.5,color:t.textMuted,maxWidth:320}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{room.notes||"—"}</span></td>
+              <td style={{padding:"13px 16px"}}><StatusBadge status={room.status}/></td>
+              <td style={{padding:"13px 16px"}}><div style={{display:"flex",gap:6}}>
+                <Btn variant="ghost" size="sm" icon="edit" onClick={()=>setModal({...room})}>Edit</Btn>
+                <Btn variant="ghost" size="sm" icon="trash" danger onClick={()=>setDel(room)}>Delete</Btn>
+              </div></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {modal&&(
+      <Modal title={modal.id?"Edit Room":"Add Room"} onClose={()=>setModal(null)}
+        footer={<><Btn variant="secondary" onClick={()=>setModal(null)}>Cancel</Btn><Btn onClick={()=>save(modal)}>Save Room</Btn></>}>
+        <Field label="Room Name" required><Inp value={modal.name} onChange={v=>setModal(m=>({...m,name:v}))} placeholder="e.g. Sydney"/></Field>
+        <Field label="Notes"><Txta value={modal.notes} onChange={v=>setModal(m=>({...m,notes:v}))} placeholder="Any special notes…" rows={2}/></Field>
+        <Field label="Status"><Sel value={modal.status} onChange={v=>setModal(m=>({...m,status:v}))}>
+          {["active","maintenance","inactive"].map(s=><option key={s}>{s}</option>)}
+        </Sel></Field>
+        <Field label="Color">
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            {COLORS.map(c=><button key={c} onClick={()=>setModal(m=>({...m,color:c}))} style={{width:26,height:26,borderRadius:6,background:c,border:modal.color===c?"2px solid rgba(0,0,0,0.3)":"2px solid transparent",outline:modal.color===c?"2px solid "+c:"none",cursor:"pointer"}}/>)}
+          </div>
+        </Field>
+      </Modal>
+    )}
+    {del&&<ConfirmDlg title="Delete Room" message={`Delete "${del.name}"? This cannot be undone.`} onConfirm={()=>{setRooms(r=>r.filter(x=>x.id!==del.id));setDel(null);}} onCancel={()=>setDel(null)}/>}
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// EQUIPMENT
+// ═══════════════════════════════════════════════════
+function EquipmentScreen(){
+  const {theme:t,equip,setEquip}=useApp();
+  const [modal,setModal]=useState(null);
+  const [del,setDel]=useState(null);
+  const save=data=>{
+    if(data.id) setEquip(e=>e.map(x=>x.id===data.id?data:x));
+    else setEquip(e=>[...e,{...data,id:Math.max(0,...e.map(x=>x.id))+1}]);
+    setModal(null);
+  };
+  return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+      <div>
+        <div style={{fontSize:20,fontWeight:700,color:t.text,letterSpacing:-0.4}}>Equipment</div>
+        <div style={{fontSize:13,color:t.textMuted,marginTop:2}}>{equip.length} items · {equip.filter(e=>e.status==="maintenance").length} needing maintenance</div>
+      </div>
+      <Btn icon="plus" onClick={()=>setModal({name:"",serial:"",status:"available",notes:""})}>Add Equipment</Btn>
+    </div>
+    <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+      <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <thead><tr style={{background:t.surfaceAlt}}>
+          {["Equipment","Serial No.","Status","Notes","Actions"].map(h=><th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11.5,fontWeight:700,color:t.textMuted,letterSpacing:0.3,textTransform:"uppercase",borderBottom:`1px solid ${t.border}`}}>{h}</th>)}
+        </tr></thead>
+        <tbody>
+          {equip.map((item,i)=>(
+            <tr key={item.id} style={{borderBottom:i<equip.length-1?`1px solid ${t.borderLight||t.border}`:"none"}}>
+              <td style={{padding:"13px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <div style={{width:8,height:8,borderRadius:4,background:EQUIP_COLORS[(item.id-1)%EQUIP_COLORS.length],flexShrink:0}}/>
+                  <span style={{fontWeight:600,fontSize:14,color:t.text}}>{item.name}</span>
+                </div>
+              </td>
+              <td style={{padding:"13px 16px",fontSize:13,color:t.textSub,fontFamily:"monospace"}}>{item.serial}</td>
+              <td style={{padding:"13px 16px"}}><StatusBadge status={item.status}/></td>
+              <td style={{padding:"13px 16px",fontSize:12.5,color:t.textMuted,maxWidth:200}}><span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",display:"block"}}>{item.notes||"—"}</span></td>
+              <td style={{padding:"13px 16px"}}><div style={{display:"flex",gap:6}}>
+                <Btn variant="ghost" size="sm" icon="edit" onClick={()=>setModal({...item})}>Edit</Btn>
+                <Btn variant="ghost" size="sm" icon="trash" danger onClick={()=>setDel(item)}>Delete</Btn>
+              </div></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {modal&&(
+      <Modal title={modal.id?"Edit Equipment":"Add Equipment"} onClose={()=>setModal(null)}
+        footer={<><Btn variant="secondary" onClick={()=>setModal(null)}>Cancel</Btn><Btn onClick={()=>save(modal)}>Save Equipment</Btn></>}>
+        <Field label="Equipment Name" required><Inp value={modal.name} onChange={v=>setModal(m=>({...m,name:v}))} placeholder="e.g. Ultrasound Machine"/></Field>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Serial Number"><Inp value={modal.serial} onChange={v=>setModal(m=>({...m,serial:v}))} placeholder="e.g. US-002"/></Field>
+          <Field label="Status"><Sel value={modal.status} onChange={v=>setModal(m=>({...m,status:v}))}>
+            {EQUIP_STATUSES.map(s=><option key={s}>{s}</option>)}
+          </Sel></Field>
+        </div>
+        <Field label="Notes"><Txta value={modal.notes} onChange={v=>setModal(m=>({...m,notes:v}))} placeholder="Maintenance notes or special instructions…" rows={2}/></Field>
+      </Modal>
+    )}
+    {del&&<ConfirmDlg title="Delete Equipment" message={`Delete "${del.name}"? This cannot be undone.`} onConfirm={()=>{setEquip(e=>e.filter(x=>x.id!==del.id));setDel(null);}} onCancel={()=>setDel(null)}/>}
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// CLIENTS
+// ═══════════════════════════════════════════════════
+function ClientsScreen(){
+  const {theme:t,clients,setClients,appts,soapNotes,setScreen,setActiveClientId}=useApp();
+  const [modal,setModal]=useState(null);
+  const [del,setDel]=useState(null);
+  const [search,setSearch]=useState("");
+  const [viewClient,setViewClient]=useState(null);
+  const filtered=clients.filter(c=>`${c.first} ${c.last}`.toLowerCase().includes(search.toLowerCase())||c.email.toLowerCase().includes(search.toLowerCase()));
+  const save=data=>{
+    if(data.id) setClients(c=>c.map(x=>x.id===data.id?data:x));
+    else setClients(c=>[...c,{...data,id:Math.max(0,...c.map(x=>x.id))+1,tags:[]}]);
+    setModal(null);
+  };
+  const emptyForm={first:"",last:"",email:"",phone:"",dob:"",pronouns:"",allergies:"",notes:""};
+
+  if(viewClient){
+    const c=clients.find(x=>x.id===viewClient);
+    if(!c){setViewClient(null);return null;}
+    const clientAppts=appts.filter(a=>a.client===`${c.first} ${c.last}`);
+    const clientNotes=soapNotes.filter(n=>n.clientId===c.id);
+    const fmtDate=d=>d?new Date(d).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}):"—";
+    return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:24}}>
+        <button onClick={()=>setViewClient(null)} style={{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"none",cursor:"pointer",color:t.accent,fontSize:13,fontWeight:500,fontFamily:"inherit"}}>
+          <Ic n="arrowL" s={14} c={t.accent}/>Back to clients
+        </button>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"300px 1fr",gap:20}}>
+        {/* Profile card */}
+        <div>
+          <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden",marginBottom:14}}>
+            <div style={{padding:"24px 20px",borderBottom:`1px solid ${t.border}`,textAlign:"center",background:t.surfaceAlt}}>
+              <div style={{width:60,height:60,borderRadius:16,background:t.accent,display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,fontWeight:700,color:"white",margin:"0 auto 10px"}}>{c.first[0]}{c.last[0]}</div>
+              <div style={{fontSize:18,fontWeight:700,color:t.text}}>{c.first} {c.last}</div>
+              <div style={{fontSize:12,color:t.textMuted,marginTop:2}}>{c.pronouns}</div>
+              <div style={{display:"flex",gap:5,justifyContent:"center",marginTop:8,flexWrap:"wrap"}}>
+                {c.tags.map(tag=><Badge key={tag} label={tag} bg={TAG_COLORS[tag]||"#F1F5F9"} color="#475569"/>)}
+              </div>
+            </div>
+            <div style={{padding:"14px 20px",display:"flex",flexDirection:"column",gap:10}}>
+              {[["mail","email",c.email],["phone","phone",c.phone],["user","dob",fmtDate(c.dob)]].map(([icon,_,val])=>(
+                <div key={icon} style={{display:"flex",alignItems:"center",gap:8}}>
+                  <Ic n={icon} s={13} c={t.textMuted}/>
+                  <span style={{fontSize:13,color:t.textSub}}>{val||"—"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {c.allergies&&<div style={{background:t.dangerBg||"#FEF2F2",borderRadius:8,border:`1px solid ${t.dangerBorder||"#FECACA"}`,padding:"10px 14px",marginBottom:14}}>
+            <div style={{fontSize:11,fontWeight:700,color:t.danger,letterSpacing:0.4,textTransform:"uppercase",marginBottom:4}}>⚠ Allergies / Contraindications</div>
+            <div style={{fontSize:13,color:t.text}}>{c.allergies}</div>
+          </div>}
+          {c.notes&&<div style={{background:t.surface,borderRadius:8,border:`1px solid ${t.border}`,padding:"10px 14px"}}>
+            <div style={{fontSize:11,fontWeight:700,color:t.textMuted,letterSpacing:0.4,textTransform:"uppercase",marginBottom:4}}>Notes</div>
+            <div style={{fontSize:13,color:t.textSub,lineHeight:1.5}}>{c.notes}</div>
+          </div>}
+        </div>
+        {/* History */}
+        <div style={{display:"flex",flexDirection:"column",gap:16}}>
+          <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",borderBottom:`1px solid ${t.border}`,fontWeight:700,fontSize:14,color:t.text,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              Appointment History <span style={{fontWeight:400,fontSize:12,color:t.textMuted}}>{clientAppts.length} sessions</span>
+            </div>
+            {clientAppts.length===0?<div style={{padding:"20px",fontSize:13,color:t.textMuted,textAlign:"center"}}>No appointments yet</div>:
+              clientAppts.slice(0,4).map(appt=>{
+                const pract=PRACTITIONERS.find(p=>p.id===appt.pId);
+                const pal=(t.isDark?TYPE_PAL_DK:TYPE_PAL)[appt.type]||TYPE_PAL["Deep Tissue"];
+                return(<div key={appt.id} style={{padding:"12px 18px",borderBottom:`1px solid ${t.borderLight||t.border}`,display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:8,background:t.surfaceAlt,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+                    <Ic n="calendar" s={15} c={t.textMuted}/>
+                  </div>
+                  <div style={{flex:1}}>
+                    <div style={{display:"flex",gap:6,marginBottom:3}}><Badge label={appt.type} bg={pal.bg} color={pal.text} border={pal.border}/><StatusBadge status={appt.status}/></div>
+                    <div style={{fontSize:12,color:t.textMuted}}>{appt.mins} min · {DAYS[appt.day]} Apr {DATES[appt.day]}, 2026</div>
+                  </div>
+                  <div style={{display:"flex",alignItems:"center",gap:5}}>
+                    <div style={{width:20,height:20,borderRadius:5,background:pract?.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"white"}}>{pract?.initials}</div>
+                    <span style={{fontSize:12,color:t.textSub}}>{pract?.name}</span>
+                  </div>
+                </div>);
+              })
+            }
+          </div>
+          <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+            <div style={{padding:"14px 18px",borderBottom:`1px solid ${t.border}`,fontWeight:700,fontSize:14,color:t.text,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              SOAP Notes <span style={{fontWeight:400,fontSize:12,color:t.textMuted}}>{clientNotes.length} notes</span>
+            </div>
+            {clientNotes.length===0?<div style={{padding:"20px",fontSize:13,color:t.textMuted,textAlign:"center"}}>No notes yet</div>:
+              clientNotes.map(note=>{
+                const pract=PRACTITIONERS.find(p=>p.id===note.practId);
+                return(<div key={note.id} style={{padding:"12px 18px",borderBottom:`1px solid ${t.borderLight||t.border}`}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:6}}>
+                    <div style={{fontSize:13,fontWeight:600,color:t.text}}>{new Date(note.date).toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</div>
+                    <span style={{fontSize:12,color:t.textSub}}>{pract?.name}</span>
+                  </div>
+                  <div style={{fontSize:12.5,color:t.textSub,lineHeight:1.5}}><strong style={{color:t.text}}>S:</strong> {note.subjective.slice(0,100)}…</div>
+                </div>);
+              })
+            }
+          </div>
+        </div>
+      </div>
+    </div>);
+  }
+
+  return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+      <div>
+        <div style={{fontSize:20,fontWeight:700,color:t.text,letterSpacing:-0.4}}>Clients</div>
+        <div style={{fontSize:13,color:t.textMuted,marginTop:2}}>{clients.length} clients</div>
+      </div>
+      <div style={{display:"flex",gap:8}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,padding:"0 11px",height:34,borderRadius:7,border:`1px solid ${t.border}`,background:t.surface,color:t.textMuted,fontSize:13,width:220}}>
+          <Ic n="search" s={13} c={t.textMuted}/>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search clients…" style={{border:"none",background:"transparent",outline:"none",flex:1,fontSize:13,color:t.text,fontFamily:"inherit"}}/>
+        </div>
+        <Btn icon="plus" onClick={()=>setModal(emptyForm)}>Add Client</Btn>
+      </div>
+    </div>
+    <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,overflow:"hidden"}}>
+      <table style={{width:"100%",borderCollapse:"collapse"}}>
+        <thead><tr style={{background:t.surfaceAlt}}>
+          {["Client","Contact","Allergies","Tags","Actions"].map(h=><th key={h} style={{padding:"11px 16px",textAlign:"left",fontSize:11.5,fontWeight:700,color:t.textMuted,letterSpacing:0.3,textTransform:"uppercase",borderBottom:`1px solid ${t.border}`}}>{h}</th>)}
+        </tr></thead>
+        <tbody>
+          {filtered.map((c,i)=>(
+            <tr key={c.id} style={{borderBottom:i<filtered.length-1?`1px solid ${t.borderLight||t.border}`:"none",cursor:"pointer"}} onClick={()=>setViewClient(c.id)}>
+              <td style={{padding:"13px 16px"}}>
+                <div style={{display:"flex",alignItems:"center",gap:10}}>
+                  <div style={{width:32,height:32,borderRadius:8,background:t.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,fontWeight:700,color:t.accent,flexShrink:0}}>{c.first[0]}{c.last[0]}</div>
+                  <div><div style={{fontWeight:600,fontSize:14,color:t.text}}>{c.first} {c.last}</div><div style={{fontSize:11.5,color:t.textMuted}}>{c.pronouns}</div></div>
+                </div>
+              </td>
+              <td style={{padding:"13px 16px"}}>
+                <div style={{fontSize:13,color:t.textSub}}>{c.email}</div>
+                <div style={{fontSize:12,color:t.textMuted}}>{c.phone}</div>
+              </td>
+              <td style={{padding:"13px 16px",fontSize:13,color:c.allergies&&c.allergies!=="None"?t.danger:t.textMuted}}>{c.allergies||"None"}</td>
+              <td style={{padding:"13px 16px"}}>
+                <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+                  {c.tags.map(tag=><Badge key={tag} label={tag} bg={TAG_COLORS[tag]||"#F1F5F9"} color="#475569"/>)}
+                </div>
+              </td>
+              <td style={{padding:"13px 16px"}} onClick={e=>e.stopPropagation()}>
+                <div style={{display:"flex",gap:6}}>
+                  <Btn variant="ghost" size="sm" icon="eye" onClick={()=>setViewClient(c.id)}>View</Btn>
+                  <Btn variant="ghost" size="sm" icon="edit" onClick={()=>setModal({...c})}>Edit</Btn>
+                  <Btn variant="ghost" size="sm" icon="trash" danger onClick={()=>setDel(c)}>Delete</Btn>
+                </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    {modal&&(
+      <Modal title={modal.id?"Edit Client":"New Client"} onClose={()=>setModal(null)} width={580}
+        footer={<><Btn variant="secondary" onClick={()=>setModal(null)}>Cancel</Btn><Btn onClick={()=>save(modal)}>Save Client</Btn></>}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="First Name" required><Inp value={modal.first} onChange={v=>setModal(m=>({...m,first:v}))} placeholder="First"/></Field>
+          <Field label="Last Name" required><Inp value={modal.last} onChange={v=>setModal(m=>({...m,last:v}))} placeholder="Last"/></Field>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Email"><Inp type="email" value={modal.email} onChange={v=>setModal(m=>({...m,email:v}))} placeholder="email@example.com"/></Field>
+          <Field label="Phone"><Inp value={modal.phone} onChange={v=>setModal(m=>({...m,phone:v}))} placeholder="555-0000"/></Field>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          <Field label="Date of Birth"><Inp type="date" value={modal.dob} onChange={v=>setModal(m=>({...m,dob:v}))}/></Field>
+          <Field label="Pronouns"><Inp value={modal.pronouns} onChange={v=>setModal(m=>({...m,pronouns:v}))} placeholder="She/Her"/></Field>
+        </div>
+        <Field label="Allergies / Contraindications"><Inp value={modal.allergies} onChange={v=>setModal(m=>({...m,allergies:v}))} placeholder="e.g. Lavender oil, nut oils, or None"/></Field>
+        <Field label="Clinical Notes"><Txta value={modal.notes} onChange={v=>setModal(m=>({...m,notes:v}))} placeholder="Preferences, injury history, special considerations…"/></Field>
+      </Modal>
+    )}
+    {del&&<ConfirmDlg title="Delete Client" message={`Delete "${del.first} ${del.last}"? All their records will be removed.`} onConfirm={()=>{setClients(c=>c.filter(x=>x.id!==del.id));setDel(null);}} onCancel={()=>setDel(null)}/>}
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// SOAP NOTES
+// ═══════════════════════════════════════════════════
+function SoapNotesScreen(){
+  const {theme:t,soapNotes,setSoapNotes,clients,appts}=useApp();
+  const [modal,setModal]=useState(null);
+  const [view,setView]=useState(null);
+  const [del,setDel]=useState(null);
+  const emptyNote={clientId:"",apptId:"",practId:1,date:"2026-04-21",subjective:"",objective:"",assessment:"",plan:""};
+
+  const save=data=>{
+    const d={...data,clientId:+data.clientId,practId:+data.practId};
+    if(d.id) setSoapNotes(n=>n.map(x=>x.id===d.id?d:x));
+    else setSoapNotes(n=>[...n,{...d,id:Math.max(0,...n.map(x=>x.id))+1}]);
+    setModal(null);
+  };
+
+  if(view){
+    const note=soapNotes.find(n=>n.id===view);
+    if(!note){setView(null);return null;}
+    const client=clients.find(c=>c.id===note.clientId);
+    const pract=PRACTITIONERS.find(p=>p.id===note.practId);
+    const Section=({label,content})=>(
+      <div style={{marginBottom:18}}>
+        <div style={{fontSize:11,fontWeight:700,color:t.accent,letterSpacing:0.8,textTransform:"uppercase",marginBottom:6}}>{label}</div>
+        <div style={{fontSize:14,color:t.text,lineHeight:1.7,background:t.surfaceAlt,borderRadius:8,padding:"12px 14px",border:`1px solid ${t.border}`}}>{content||<span style={{color:t.textMuted,fontStyle:"italic"}}>Not recorded</span>}</div>
+      </div>
+    );
+    return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+      <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:20}}>
+        <button onClick={()=>setView(null)} style={{display:"flex",alignItems:"center",gap:6,background:"transparent",border:"none",cursor:"pointer",color:t.accent,fontSize:13,fontWeight:500,fontFamily:"inherit"}}>
+          <Ic n="arrowL" s={14} c={t.accent}/>Back to notes
+        </button>
+        <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+          <Btn variant="secondary" icon="edit" onClick={()=>{setView(null);setModal({...note});}}>Edit</Btn>
+          <Btn variant="secondary" icon="trash" danger onClick={()=>{setDel(note);setView(null);}}>Delete</Btn>
+        </div>
+      </div>
+      <div style={{maxWidth:740,margin:"0 auto"}}>
+        <div style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,padding:"20px 24px",marginBottom:20}}>
+          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:4}}>
+            <div style={{width:44,height:44,borderRadius:12,background:t.accent+"22",display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:t.accent}}>{client?client.first[0]+client.last[0]:"?"}</div>
+            <div>
+              <div style={{fontSize:18,fontWeight:700,color:t.text}}>{client?`${client.first} ${client.last}`:"Unknown Client"}</div>
+              <div style={{fontSize:12.5,color:t.textMuted}}>{new Date(note.date).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"})} · {pract?.name}</div>
+            </div>
+          </div>
+        </div>
+        <Section label="S — Subjective" content={note.subjective}/>
+        <Section label="O — Objective" content={note.objective}/>
+        <Section label="A — Assessment" content={note.assessment}/>
+        <Section label="P — Plan" content={note.plan}/>
+      </div>
+    </div>);
+  }
+
+  return(<div style={{flex:1,overflowY:"auto",padding:24}}>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
+      <div>
+        <div style={{fontSize:20,fontWeight:700,color:t.text,letterSpacing:-0.4}}>SOAP Notes</div>
+        <div style={{fontSize:13,color:t.textMuted,marginTop:2}}>{soapNotes.length} notes on record</div>
+      </div>
+      <Btn icon="plus" onClick={()=>setModal({...emptyNote,clientId:clients[0]?.id||""})}>New Note</Btn>
+    </div>
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      {soapNotes.map(note=>{
+        const client=clients.find(c=>c.id===note.clientId);
+        const pract=PRACTITIONERS.find(p=>p.id===note.practId);
+        return(<div key={note.id} style={{background:t.surface,borderRadius:10,border:`1px solid ${t.border}`,padding:"16px 20px",cursor:"pointer",transition:"box-shadow 0.12s"}}
+          onClick={()=>setView(note.id)}>
+          <div style={{display:"flex",alignItems:"flex-start",gap:14}}>
+            <div style={{width:40,height:40,borderRadius:10,background:t.accent+"18",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
+              <Ic n="note" s={18} c={t.accent}/>
+            </div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}>
+                <span style={{fontWeight:700,fontSize:15,color:t.text}}>{client?`${client.first} ${client.last}`:"Unknown"}</span>
+                <span style={{fontSize:12,color:t.textMuted}}>{new Date(note.date).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}</span>
+                <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:5}}>
+                  <div style={{width:18,height:18,borderRadius:5,background:pract?.color,display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,color:"white"}}>{pract?.initials}</div>
+                  <span style={{fontSize:12,color:t.textSub}}>{pract?.name}</span>
+                </div>
+              </div>
+              <div style={{fontSize:13,color:t.textSub,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                <strong>S:</strong> {note.subjective}
+              </div>
+              <div style={{display:"flex",gap:8,marginTop:8}}>
+                {["S","O","A","P"].map(s=>(
+                  <div key={s} style={{width:22,height:22,borderRadius:6,background:note[{S:"subjective",O:"objective",A:"assessment",P:"plan"}[s]]?t.accentBg:t.surfaceAlt,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,color:note[{S:"subjective",O:"objective",A:"assessment",P:"plan"}[s]]?t.accent:t.textMuted}}>{s}</div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>);
+      })}
+    </div>
+    {modal&&(
+      <Modal title={modal.id?"Edit SOAP Note":"New SOAP Note"} onClose={()=>setModal(null)} width={640}
+        footer={<><Btn variant="secondary" onClick={()=>setModal(null)}>Cancel</Btn><Btn onClick={()=>save(modal)}>Save Note</Btn></>}>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12,marginBottom:4}}>
+          <Field label="Client" required>
+            <Sel value={modal.clientId} onChange={v=>setModal(m=>({...m,clientId:v}))}>
+              <option value="">Select client…</option>
+              {clients.map(c=><option key={c.id} value={c.id}>{c.first} {c.last}</option>)}
+            </Sel>
+          </Field>
+          <Field label="Practitioner">
+            <Sel value={modal.practId} onChange={v=>setModal(m=>({...m,practId:+v}))}>
+              {PRACTITIONERS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}
+            </Sel>
+          </Field>
+          <Field label="Date"><Inp type="date" value={modal.date} onChange={v=>setModal(m=>({...m,date:v}))}/></Field>
+        </div>
+        <Divider/>
+        <Field label="S — Subjective" hint="What the client reports: pain level, symptoms, history"><Txta value={modal.subjective} onChange={v=>setModal(m=>({...m,subjective:v}))} placeholder="Client reports…" rows={3}/></Field>
+        <Field label="O — Objective" hint="What you observe and measure"><Txta value={modal.objective} onChange={v=>setModal(m=>({...m,objective:v}))} placeholder="Palpable tightness in…" rows={3}/></Field>
+        <Field label="A — Assessment" hint="Your clinical interpretation"><Txta value={modal.assessment} onChange={v=>setModal(m=>({...m,assessment:v}))} placeholder="Diagnosis / findings…" rows={3}/></Field>
+        <Field label="P — Plan" hint="Treatment plan and follow-up"><Txta value={modal.plan} onChange={v=>setModal(m=>({...m,plan:v}))} placeholder="Continue treatment…" rows={3}/></Field>
+      </Modal>
+    )}
+    {del&&<ConfirmDlg title="Delete Note" message="Delete this SOAP note? This cannot be undone." onConfirm={()=>{setSoapNotes(n=>n.filter(x=>x.id!==del.id));setDel(null);}} onCancel={()=>setDel(null)}/>}
+  </div>);
+}
+
+// ═══════════════════════════════════════════════════
+// APPOINTMENT MODAL
+// ═══════════════════════════════════════════════════
+function ApptModal(){
+  const {theme:t,apptModal,setApptModal,appts,setAppts,rooms,equip}=useApp();
+  const isNew=!apptModal?.id;
+  const [form,setForm]=useState(()=>({
+    client:"",type:"Deep Tissue",mins:60,h:9,m:0,day:0,pId:1,status:"confirmed",roomId:1,equipBookings:[],...apptModal,
+  }));
+  const save=()=>{
+    if(!form.client.trim()) return;
+    if(isNew) setAppts(a=>[...a,{...form,id:Math.max(0,...a.map(x=>x.id))+1}]);
+    else setAppts(a=>a.map(x=>x.id===form.id?form:x));
+    setApptModal(null);
+  };
+  const addEquipBooking=()=>setForm(f=>({...f,equipBookings:[...f.equipBookings,{equipId:equip[0]?.id||1,startH:f.h,startM:f.m,durationMins:20}]}));
+  const updateBooking=(i,patch)=>setForm(f=>({...f,equipBookings:f.equipBookings.map((b,idx)=>idx===i?{...b,...patch}:b)}));
+  const removeBooking=i=>setForm(f=>({...f,equipBookings:f.equipBookings.filter((_,idx)=>idx!==i)}));
+  const timeOpts=[];
+  for(let h=START_H;h<END_H;h++) for(let m=0;m<60;m+=15){const ap=h>=12?"pm":"am";const hh=h>12?h-12:h;timeOpts.push({h,m,label:`${hh}:${m.toString().padStart(2,"0")} ${ap}`});}
+
+  return(<Modal title={isNew?"New Appointment":"Edit Appointment"} onClose={()=>setApptModal(null)} width={580}
+    footer={<><Btn variant="secondary" onClick={()=>setApptModal(null)}>Cancel</Btn><Btn onClick={save}>{isNew?"Book Appointment":"Save Changes"}</Btn></>}>
+    <Field label="Client Name" required><Inp value={form.client} onChange={v=>setForm(f=>({...f,client:v}))} placeholder="Full name…"/></Field>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <Field label="Treatment Type"><Sel value={form.type} onChange={v=>setForm(f=>({...f,type:v}))}>{TREATMENT_TYPES.map(x=><option key={x}>{x}</option>)}</Sel></Field>
+      <Field label="Duration"><Sel value={form.mins} onChange={v=>setForm(f=>({...f,mins:+v}))}>{[30,45,60,75,90,120].map(d=><option key={d} value={d}>{d} minutes</option>)}</Sel></Field>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:12}}>
+      <Field label="Day"><Sel value={form.day} onChange={v=>setForm(f=>({...f,day:+v}))}>{DAYS.map((d,i)=><option key={i} value={i}>{d} Apr {DATES[i]}</option>)}</Sel></Field>
+      <Field label="Start Time"><Sel value={`${form.h}:${form.m}`} onChange={v=>{const[h,m]=v.split(":");setForm(f=>({...f,h:+h,m:+m}));}}>{timeOpts.map(o=><option key={o.label} value={`${o.h}:${o.m}`}>{o.label}</option>)}</Sel></Field>
+      <Field label="Practitioner"><Sel value={form.pId} onChange={v=>setForm(f=>({...f,pId:+v}))}>{PRACTITIONERS.map(p=><option key={p.id} value={p.id}>{p.name}</option>)}</Sel></Field>
+    </div>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+      <Field label="Room"><Sel value={form.roomId} onChange={v=>setForm(f=>({...f,roomId:+v}))}>{rooms.map(r=><option key={r.id} value={r.id}>{r.name}</option>)}</Sel></Field>
+      <Field label="Status"><Sel value={form.status} onChange={v=>setForm(f=>({...f,status:v}))}><option value="confirmed">Confirmed</option><option value="pending">Pending</option><option value="cancelled">Cancelled</option></Sel></Field>
+    </div>
+    <Divider/>
+    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+      <div>
+        <div style={{fontSize:13,fontWeight:700,color:t.text}}>Equipment Bookings</div>
+        <div style={{fontSize:11.5,color:t.textMuted}}>Each device has its own start time and duration — can overlap with other equipment</div>
+      </div>
+      <Btn variant="secondary" size="sm" icon="plus" onClick={addEquipBooking}>Add Equipment</Btn>
+    </div>
+    {form.equipBookings.length===0&&(
+      <div style={{padding:"14px",borderRadius:8,border:`1px dashed ${t.border}`,textAlign:"center",fontSize:13,color:t.textMuted}}>No equipment booked — click "Add Equipment" to assign devices to this session</div>
+    )}
+    {form.equipBookings.map((b,i)=>(
+      <div key={i} style={{display:"flex",gap:8,alignItems:"center",marginBottom:8,padding:"10px 12px",borderRadius:8,background:t.surfaceAlt,border:`1px solid ${t.border}`}}>
+        <div style={{flex:2}}>
+          <div style={{fontSize:11,color:t.textMuted,marginBottom:3,fontWeight:600}}>EQUIPMENT</div>
+          <Sel value={b.equipId} onChange={v=>updateBooking(i,{equipId:+v})} style={{fontSize:12}}>
+            {equip.map(e=><option key={e.id} value={e.id}>{e.name}</option>)}
+          </Sel>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,color:t.textMuted,marginBottom:3,fontWeight:600}}>START TIME</div>
+          <Sel value={`${b.startH}:${b.startM}`} onChange={v=>{const[h,m]=v.split(":");updateBooking(i,{startH:+h,startM:+m});}} style={{fontSize:12}}>
+            {timeOpts.map(o=><option key={o.label} value={`${o.h}:${o.m}`}>{o.label}</option>)}
+          </Sel>
+        </div>
+        <div style={{flex:1}}>
+          <div style={{fontSize:11,color:t.textMuted,marginBottom:3,fontWeight:600}}>DURATION (min)</div>
+          <Inp type="number" value={b.durationMins} onChange={v=>updateBooking(i,{durationMins:Math.max(1,+v)})} placeholder="20" style={{fontSize:12}}/>
+        </div>
+        <button onClick={()=>removeBooking(i)} style={{background:"transparent",border:"none",cursor:"pointer",color:t.danger,padding:6,marginTop:14}}>
+          <Ic n="x" s={14} c={t.danger}/>
+        </button>
+      </div>
+    ))}
+  </Modal>);
+}
+
+// ═══════════════════════════════════════════════════
+// APP
+// ═══════════════════════════════════════════════════
+const TITLES={dashboard:["Dashboard","Monday, April 21, 2026"],calendar:["Calendar","Week of April 21–27, 2026"],clients:["Clients","Manage your client roster"],rooms:["Rooms","Manage clinic rooms"],equipment:["Equipment","Manage clinic equipment"],notes:["SOAP Notes","Clinical documentation"]};
+
+function App(){
+  const [screen,setScreen]=useState("dashboard");
+  const [isDark,setIsDark]=useState(false);
+  const [rooms,setRooms]=useState(INIT_ROOMS);
+  const [equip,setEquip]=useState(INIT_EQUIP);
+  const [appts,setAppts]=useState(INIT_APPTS);
+  const [clients,setClients]=useState(INIT_CLIENTS);
+  const [soapNotes,setSoapNotes]=useState(INIT_NOTES);
+  const [apptModal,setApptModal]=useState(null);
+  const theme=isDark?DARK:LIGHT;
+  const [title,subtitle]=TITLES[screen]||["Nova",""];
+  const ctx={screen,setScreen,isDark,setIsDark,theme,rooms,setRooms,equip,setEquip,appts,setAppts,clients,setClients,soapNotes,setSoapNotes,apptModal,setApptModal};
+  return(<Ctx.Provider value={ctx}>
+    <div style={{display:"flex",height:"100vh",overflow:"hidden",background:theme.bg}}>
+      <Sidebar/>
+      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+        <TopBar title={title} subtitle={subtitle}/>
+        <div style={{flex:1,display:"flex",overflow:"hidden"}}>
+          {screen==="dashboard" &&<DashboardScreen/>}
+          {screen==="calendar"  &&<CalendarScreen/>}
+          {screen==="clients"   &&<ClientsScreen/>}
+          {screen==="rooms"     &&<RoomsScreen/>}
+          {screen==="equipment" &&<EquipmentScreen/>}
+          {screen==="notes"     &&<SoapNotesScreen/>}
+        </div>
+      </div>
+      {apptModal!==null&&<ApptModal/>}
+    </div>
+  </Ctx.Provider>);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>
